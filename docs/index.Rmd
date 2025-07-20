@@ -1,0 +1,207 @@
+---
+title: Statistical analysis of Climate data
+subtitle: 
+output:
+  html_document:
+    fig_caption: yes
+    theme: cerulean
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    df_print: paged
+  html_notebook: default
+---
+
+## Problem Statement
+Investigating Normality distribution of maximum temperature and solar exposure in Melborne and Sydney over January, March and May in 2023. The aim of this study is to analyze the normality distribution of two distinct variables, namely Maximum Temperature and Solar Exposure, in the cities of Melbourne and Sydney over a three-month period in the year 2023[^2].These variables have been chosen due to their significance in understanding and characterizing the weather conditions of the respective cities. The analysis will provide insights into the statistical behavior of these variables and their potential suitability for various statistical prediction.
+
+There are many statistical methods such as regression, correlation, and ANOVA named as parametric tests based on the normal distribution data[^1]. Therefore, we need to verify whether this data set has been drawn from normally distributed population. The Statistical analysis of climate data aims to evaluate the normal distribution status of the selected variables (Maximum Temperature and Solar Exposure) using descriptive statistics. By utilizing the provided dataset and implementing statistical methods like, 
+
+* Descriptive Statistics: This includes measures like mean, median, mode, standard deviation, and range. Descriptive statistics provide a summary of the basic features of the data.
+* Histograms: Creating histograms can help visualize the distribution of the data and provide insights into its shape and spread.
+
+The 'Solar Exposure' variable quantifies the total solar energy received on a horizontal surface over a 24-hour duration, spanning from midnight to midnight. Notably, these values tend to peak during sun-drenched summer days and during winter or heavily clouded days. Conversely, the 'Maximum Temperature' variable signifies the highest temperature documented within a day, from 9 am to the subsequent 24-hour period. 
+
+## Load Packages
+
+```{r, message=FALSE}
+# This is a chunk where you can load the necessary packages required to reproduce the report
+library(dplyr)
+library(readr)
+library(ggplot2)
+```
+
+## Data
+
+Two distinct dataframes were meticulously constructed utilizing climate data from Melbourne and Sydney. This involved the initial step of importing corresponding CSV files. Subsequently, the data preparation process encompassed the removal of empty columns from both dataframes using `cbind()` function, thereby ensuring data integrity.
+
+To enhance analytical clarity, a new variable was introduced to capture the city name associated with each dataset using `mutate()` function. This strategic augmentation further streamlined subsequent analyses.
+
+Next, variables of each data frame is renamed to eliminate the white spaces of the names and to make them clearly understandable for further analysis. Also the variable names are re-arranged in a order to make the city as the first variable. All this is done to help simplify the analysis and for clear visualisation of dataframe. The `names()` and `c()` are used to achieve the above mentioned outcome.
+
+In a bid to consolidate the datasets for comprehensive summary statistics analysis, the two individual dataframes were effectively merged into a singular cohesive dataframe using `rbind()` function. Next, arranged according to the city using `arrange()` function.  
+```{r, message=FALSE}
+# Preparing the data set for analysis 
+melb <- read_csv('Climate Data Melbourne-1.csv')
+syd <- read_csv('Climate Data Sydney-1.csv')
+melb <- cbind(melb[1:2],melb[4]) 
+syd <- cbind(syd[1:2],syd[4])
+melb <- mutate(melb, City="Melbourne")
+syd <- mutate(syd, City="Sydney")
+names(melb) <- c("Date", "SolarExposure", "MaxTemp","City")
+names(syd) <- c("Date", "SolarExposure", "MaxTemp","City")
+melb <- melb[,c("City","Date", "SolarExposure","MaxTemp")]
+syd <- syd[,c("City","Date", "SolarExposure","MaxTemp")]
+climate <- rbind(syd,melb)
+climate <- climate %>% arrange(City)
+climate
+```
+
+
+
+## Summary Statistics
+
+Below, a concise summary is presented for the variables of Solar Exposure and Maximum Temperature. These summaries have been meticulously organized based on their respective cities using `group_by()`[^4] & `summarise()`[^3] functions.
+
+```{r}
+# Summary of the variables solar exposure in Melbourne both cities, and arrange based on city.
+climate %>% group_by(City) %>% summarise(min = min(SolarExposure),
+                   first_quantile = quantile(SolarExposure, 0.25),
+                   Median = median(SolarExposure),
+                   Mean = mean(SolarExposure),
+                   third_quantile = quantile(SolarExposure,0.75),
+                   max = max(SolarExposure), 
+                   stand_dev = sd(SolarExposure), 
+                   n = n(),
+                   missing = sum(is.na(SolarExposure))) 
+
+# Summary of the variables max Temperature in both cities, and arrange based on city.
+climate %>% group_by(City) %>% summarise(min = min(MaxTemp),
+                   first_quantile = quantile(MaxTemp, 0.25),
+                   Median = median(MaxTemp),
+                   Mean = mean(MaxTemp),
+                   third_quantile = quantile(MaxTemp,0.75),
+                   max = max(MaxTemp), 
+                   stand_dev = sd(MaxTemp), 
+                   n = n(),
+                   missing = sum(is.na(MaxTemp)))
+
+```
+
+
+
+
+## Distribution Fitting
+
+The subsequent section involves a meticulous comparison between the empirical distribution of a selected variable and the normal distribution, distinctly conducted for both the cities of Melbourne and Sydney. This comparative analysis is facilitated through the generation of histograms coupled with overlays of normal distribution curves.
+
+To achieve the desired analytical outcome, a systematic approach is employed. Firstly, the dataset is divided into two distinct dataframes based on the city names, namely Melbourne and Sydney. This step is achieved using `filter()`[^4] function and assigned the result to two data frames. Subsequently, a critical step involves the computation of the mean derived from a sample size of 50 for each variable, leading to the creation of individual sampling distributions corresponding to their respective cities.
+
+The sampling distribution is calculated by generating 5000 samples of 30 samples and calculating sample mean of each of them. Next each of these sample mean is stored in a  pre-initialized vector 5000 entries. Following steps are achieved using `function(x,N)`[^3] pre defines function (x - variables name & N - sample size)
+
+Leveraging these generated sampling distributions, the subsequent step involves plotting histograms. The histograms are created using `hist()`[^5] function with a break of 30 and calculated sampling distribution. These histograms serve as visual interpretation of the empirical distribution of each variable within their respective cities. Furthermore, a important aspect of this analysis entails overlaying these histograms with normal distribution curves which is plotted using `curve()`[^5] and `dnorm()`[^5] functions which gives the value of the probability density function of the normal distribution, thereby enabling a comparative assessment between the empirical and normal distributions. To make it clear for visual analysis the `abline()`[^3] function are used to create two vertical lines to represent,
+
+* red line - sample mean of the sampling distribution  
+* blue line- sample mean of the entire variable.  
+
+
+```{r}
+# Created two dataframe according to the cities
+melb <- climate %>% filter(City=='Melbourne')
+syd <- climate %>% filter(City=='Sydney')
+
+# Function: calculate sampling distribution of user define sample size and data variable from the dataframes
+samplemeansN <- function(x,N){
+  sample_meansN <- rep(NA,5000)
+  for(i in 1:5000){
+  samp <- sample(x, N)
+  sample_meansN[i] <- mean(samp)}
+  return(sample_meansN)
+}
+
+# Using the above funtion sampling distribution of solar exposure and maximum temperature in both cities is calculated and stored in four differenct variables
+MelbSolar <- samplemeansN(melb$SolarExposure, 30)
+MelbTemp <- samplemeansN(melb$MaxTemp, 30)
+
+SydbSolar <- samplemeansN(syd$SolarExposure, 30)
+SydTemp <- samplemeansN(syd$MaxTemp, 30)
+
+# Plotted the histogram for Melbourne solar exposure along with the normal distribution curve and overlay them. Create abline to identify the means of different calculation methods
+
+hist(MelbSolar, breaks = 30, prob = TRUE, col = "lightblue", main = "Melbourne Solar Exposure normal distribution overlay",ylim = c(0, 0.4), xlab = "Melbourne Solar Exposure")
+curve(dnorm(x, mean(MelbSolar), sd(MelbSolar)), add = TRUE, col = "red", lwd = 2)
+abline(v=mean(MelbSolar),col='red',lw=2) 
+abline(v=mean(melb$SolarExposure),col='blue',lw=2)
+
+# Plotted the histogram for Melbourne maximum temperature along with the normal distribution curve and overlay them. Create abline to identify the means of different calculation methods
+
+hist(MelbTemp, breaks = 30, prob = TRUE, col = "lightblue", main = "Melbourne MaxTemp normal distribution overlay", ylim = c(0, 0.5), xlab = "Melbourne Maximum Temperature")
+curve(dnorm(x, mean(MelbTemp), sd(MelbTemp)), add = TRUE, col = "red", lwd = 2)
+abline(v=mean(MelbTemp),col='red',lw=2) 
+abline(v=mean(melb$MaxTemp),col='blue',lw=2)
+
+# Plotted the histogram for Sydney solar exposure along with the normal distribution curve and overlay them. Create abline to identify the means of different calculation methods
+
+hist(SydbSolar, breaks = 30, prob = TRUE, col = "lightgreen", main = "Sydney Solar Exposure normal distribution overlay",ylim = c(0, 0.4), xlab = "Sydney Solar Exposure")
+curve(dnorm(x, mean(SydbSolar), sd(SydbSolar)), add = TRUE, col = "red", lwd = 2)
+abline(v=mean(SydbSolar),col='red',lw=2) 
+abline(v=mean(syd$SolarExposure),col='blue',lw=2)
+
+# Plotted the histogram for Sydney Maximum Temperature along with the normal distribution curve and overlay them. Create abline to identify the means of different calculation methods
+
+hist(SydTemp, breaks = 30, prob = TRUE, col = "lightgreen", main = "Sydney MaxTemp normal distribution overlay", ylim = c(0, 0.7), xlab = "Sydney Maximum Temperature")
+curve(dnorm(x, mean(SydTemp), sd(SydTemp)), add = TRUE, col = "red", lwd = 2)
+abline(v=mean(SydTemp),col='red',lw=2) 
+abline(v=mean(syd$MaxTemp),col='blue',lw=2)
+
+
+```
+
+## Interpretation
+
+**Descriptive analysis of Melbourne city**
+
+* **Solar exposure data**
+
+
+25% of solar exposure data falls below 8.5.It means that, around 23 days solar exposure value marked below 8.5. Median value of solar exposure is around 13.8. Melbourne city has 15.28 average solar exposure within this 3 months.75% of solar  exposure data falls below 20.70, It means that, around 69 days solar exposure value marked below 20.70.
+According to the results Melbourne has 3.7 minimum solar exposure while 31.7 maximum value. Standard deviation of solar exposure is around 7.9978.
+
+* **Maximum temperature data**
+
+
+25% of maximum temperature data falls below 17.4. It implies that, around 23 days maximum temperature valued below 17.4. Median value of maximum temperature is around 21.4. Melbourne city has 22.42 average maximum temperature within this 3 months.75% of maximum temperature data falls below 26.3. It means that, around 69 days maximum temperature marked below 26.3.According to the results, Melbourne has 11.5 minimum maximum temperature while 38.2 maximum value. Standard deviation of maximum temperature is around 6.451.
+
+
+**Descriptive analysis of Sydney** 
+
+* **Solar exposure data**
+
+
+25% of solar exposure data falls below 11.2. It means that, around 23 days solar exposure value marked below 11.2. Median value of solar exposure is around 13.9. Sydney has 16.557 average solar exposure within this 3 months.75% of solar  exposure data falls below 22.3.It means that, around 69 days solar exposure value marked below 22.3.According to the results Sydney has 3.1 minimum solar exposure while 31.5 maximum value. Standard deviation of solar exposure is around 7.2894.
+
+* **Maximum temperature data**
+
+25% of maximum temperature data falls below 21.2. It implies that, around 23 days maximum temperature valued below 21.2 .Median value of maximum temperature is around 25.2. Sydney has 24.79 average maximum temperature within this 3 months.75% of maximum temperature data falls below 28.1. It means that, around 69 days maximum temperature marked below 28.1.
+According to the results Sydney has 15.9 minimum maximum temperature while 37.9 maximum value. Standard deviation of maximum temperature is around 4.3512.
+
+**Conclusion**
+
+There are no missing values in solar exposure data set and maximum temperature data set according to Sydney and Melbourne. 
+
+Sydney has higher average solar exposure than Melbourne city. Apart from that, Sydney has higher average maximum temperature than Melbourne. 
+Melbourne has higher standard deviation of solar exposure and maximum temperature than Sydney. It indicates that solar exposure and maximum temperature data of Melbourne are more spread out than Sydney data.
+
+According to the above histograms with normal distribution with overlay, it seems like bell shaped curve and symmetric about the mean. Therefore,we can conclude that these two variables, solar exposure and maximum temperature of Sydney and Melbourne are normally distributed.As a result of that, we can check there is a relationship between solar exposure and maximum temperature. It will be useful to find the reason for climate changes in these two cities.
+
+## **References**
+
+[^1]: Turney, S. (2023) Quartiles &amp; Quantiles: Calculation, Definition &amp; Interpretation, Scribbr, Accessed 24 August 2023. https://www.scribbr.com/statistics/quartiles-quantiles/#:~:text=The%20first%20quartile%20
+
+[^2]: OpenAI. 2023. ChatGPT. August 3 Version. August 27, 2023. https://chat.openai.com/share/cc82e3e2-4b61-41d3-a973-0b4086b87419
+
+[^3]: RMIT University (2023) Week 6 - Class Worksheet R code-1.R, RMIT Canva website, Accessed  24 August 2023. https://rmit.instructure.com/courses/107035/discussion_topics/2051132 . 
+
+[^4]: RMIT University (2023) Week 4 - Class Worksheet R code.R, RMIT Canva website, Accessed  24 August 2023. https://rmit.instructure.com/courses/107035/discussion_topics/2051132
+
+[^5]: RMIT University (2023) Applied data project 1 (or Assignment 1), RMIT Canva website, Accessed  24 August 2023. https://www.rmit.edu.au/students/my-course/canvas 
