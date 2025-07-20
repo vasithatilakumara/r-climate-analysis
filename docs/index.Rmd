@@ -41,20 +41,35 @@ Next, variables of each data frame is renamed to eliminate the white spaces of t
 
 In a bid to consolidate the datasets for comprehensive summary statistics analysis, the two individual dataframes were effectively merged into a singular cohesive dataframe using `rbind()` function. Next, arranged according to the city using `arrange()` function.  
 ```{r, message=FALSE}
-# Preparing the data set for analysis 
+# Load climate data CSV files for Melbourne and Sydney
 melb <- read_csv('Climate Data Melbourne-1.csv')
 syd <- read_csv('Climate Data Sydney-1.csv')
-melb <- cbind(melb[1:2],melb[4]) 
-syd <- cbind(syd[1:2],syd[4])
-melb <- mutate(melb, City="Melbourne")
-syd <- mutate(syd, City="Sydney")
-names(melb) <- c("Date", "SolarExposure", "MaxTemp","City")
-names(syd) <- c("Date", "SolarExposure", "MaxTemp","City")
-melb <- melb[,c("City","Date", "SolarExposure","MaxTemp")]
-syd <- syd[,c("City","Date", "SolarExposure","MaxTemp")]
-climate <- rbind(syd,melb)
+
+# Keep only the relevant columns: Date (1st), Solar Exposure (2nd), MaxTemp (4th)
+melb <- cbind(melb[1:2], melb[4]) 
+syd <- cbind(syd[1:2], syd[4])
+
+# Add a column to indicate the city for each dataset
+melb <- mutate(melb, City = "Melbourne")
+syd <- mutate(syd, City = "Sydney")
+
+# Rename columns for consistency and clarity
+names(melb) <- c("Date", "SolarExposure", "MaxTemp", "City")
+names(syd)  <- c("Date", "SolarExposure", "MaxTemp", "City")
+
+# Reorder columns so 'City' comes first
+melb <- melb[, c("City", "Date", "SolarExposure", "MaxTemp")]
+syd  <- syd[, c("City", "Date", "SolarExposure", "MaxTemp")]
+
+# Combine both datasets into one unified dataframe
+climate <- rbind(syd, melb)
+
+# Sort the data by city name for better organization
 climate <- climate %>% arrange(City)
+
+# Display the resulting combined dataset
 climate
+
 ```
 
 
