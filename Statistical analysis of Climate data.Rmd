@@ -42,8 +42,8 @@ Next, variables of each data frame is renamed to eliminate the white spaces of t
 In a bid to consolidate the datasets for comprehensive summary statistics analysis, the two individual dataframes were effectively merged into a singular cohesive dataframe using `rbind()` function. Next, arranged according to the city using `arrange()` function.  
 ```{r, message=FALSE}
 # Preparing the data set for analysis 
-melb <- read_csv('Climate Data Melbourne-1.csv')
-syd <- read_csv('Climate Data Sydney-1.csv')
+melb <- read_csv('data/Climate Data Melbourne-1.csv')
+syd <- read_csv('data/Climate Data Sydney-1.csv')
 melb <- cbind(melb[1:2],melb[4]) 
 syd <- cbind(syd[1:2],syd[4])
 melb <- mutate(melb, City="Melbourne")
